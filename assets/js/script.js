@@ -10,7 +10,8 @@ var createTask = function (taskText, taskDate, taskList) {
 
   // append span and p element to parent li
   taskLi.append(taskSpan, taskP);
-
+  // check due date
+  auditTask(taskLi);
   // append to ul list on the page
   $("#list-" + taskList).append(taskLi);
 };
@@ -82,12 +83,21 @@ $(".list-group").on("click", "span", function () {
   //swap
   $(this).replaceWith(dateInput);
 
+  //use date picker when editing a task
+  dateInput.datepicker({
+    minDate: 1,
+    onClose: function () {
+      // when calendar is closed, force a "change" event on the `dateInput`
+      $(this).trigger("change");
+    },
+  });
+
   //auto focus on new element
   dateInput.trigger("focus");
 });
 
 //value of due date was changed
-$(".list-group").on("blur", "input[type = 'text']", function () {
+$(".list-group").on("change", "input[type = 'text']", function () {
   //get current text
   var date = $(this).val().trim();
   //get parents ul attribute
@@ -106,6 +116,8 @@ $(".list-group").on("blur", "input[type = 'text']", function () {
 
   //replace input with span element
   $(this).replaceWith(taskSpan);
+  //send li element into audit task to check due date
+  auditTask(($(taskSpan)).closest(".list-group-item"));
 });
 
 // modal was triggered
@@ -141,6 +153,7 @@ $("#task-form-modal .btn-primary").click(function () {
     saveTasks();
   }
 });
+
 // sort tasks function
 $(".card .list-group").sortable({
   connectWith: $(".card .list-group"),
@@ -191,18 +204,39 @@ $("#remove-tasks").on("click", function () {
 
 //allow drop into the delete area of the UI
 $("#trash").droppable({
-  accept: ".card .list-group-item", 
-  tolerance: "touch", 
-  drop: function(event, ui) {
+  accept: ".card .list-group-item",
+  tolerance: "touch",
+  drop: function (event, ui) {
     ui.draggable.remove();
-    console.log("drop")
-  }, 
-  over: function(event, ui) {
-    console.log("over")
-  }, 
-  out: function(event, ui){
-    console.log("out")
+    console.log("drop");
+  },
+  over: function (event, ui) {
+    console.log("over");
+  },
+  out: function (event, ui) {
+    console.log("out");
+  },
+});
+
+//due date picker
+$("#modalDueDate").datepicker({
+  minDate: 1,
+});
+var auditTask = function (taskEl) {
+  //get date from the task element
+  var date = $(taskEl).find("span").text().trim();
+  //convert to moment object at 5pm
+  var time = moment(date, "L").set("hour", 17);
+
+  //remove old classes from the element
+  $(taskEl).removeClass("list-group-item-warning", "list-group-item-danger"); 
+
+  //apply new classes
+  if (moment().isAfter(time)) {
+    $(taskEl).addClass("list-group-item-danger")
+  } else if (Math.abs(moment().diff(time, "days"))<= 2) {
+    $(taskEl).addClass("list-group-item-warning")
   }
-})
+};
 // load tasks for the first time
 loadTasks();
